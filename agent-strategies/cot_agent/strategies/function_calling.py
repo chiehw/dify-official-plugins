@@ -36,6 +36,7 @@ class FunctionCallingParams(BaseModel):
     model: AgentModelConfig
     tools: list[ToolEntity] | None
     maximum_iterations: int = 3
+    context: Any = None
 
 
 class FunctionCallingAgentStrategy(AgentStrategy):
@@ -401,6 +402,34 @@ class FunctionCallingAgentStrategy(AgentStrategy):
                 for resp in tool_responses:
                     yield self.create_text_message(resp["tool_response"])
             iteration_step += 1
+
+        # If context is a list of dict, create retriever resource message
+        if isinstance(fc_params.context, list[dict]):
+            yield self.create_retriever_resource_message(
+                retriever_resources=[
+                    ToolInvokeMessage.RetrieverResourceMessage.RetrieverResource(
+                        position=context.get("position"),
+                        dataset_id=context.get("dataset_id"),
+                        dataset_name=context.get("dataset_name"),
+                        document_id=context.get("document_id"),
+                        document_name=context.get("document_name"),
+                        data_source_type=context.get("data_source_type"),
+                        segment_id=context.get("segment_id"),
+                        retriever_from=context.get("retriever_from"),
+                        score=context.get("score"),
+                        hit_count=context.get("hit_count"),
+                        word_count=context.get("word_count"),
+                        segment_position=context.get("segment_position"),
+                        index_node_hash=context.get("index_node_hash"),
+                        content=context.get("content"),
+                        page=context.get("page"),
+                        doc_metadata=context.get("doc_metadata"),
+                    )
+                    for i, context in enumerate(fc_params.context)
+                ],
+                context="",
+            )
+
         yield self.create_json_message(
             {
                 "execution_metadata": {
